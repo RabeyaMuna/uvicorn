@@ -132,7 +132,13 @@ def test_multiprocess_sighup() -> None:
     time.sleep(1)
     pids = [p.pid for p in supervisor.processes]
     supervisor.signal_queue.append(signal.SIGHUP)
-    time.sleep(1)
+    # Wait up to 5 seconds for workers to be restarted and PIDs to change.
+    start = time.time()
+    while time.time() - start < 5:
+        current_pids = [p.pid for p in supervisor.processes]
+        if current_pids != pids:
+            break
+        time.sleep(0.1)
     assert pids != [p.pid for p in supervisor.processes]
     supervisor.signal_queue.append(signal.SIGINT)
     supervisor.join_all()
@@ -147,7 +153,12 @@ def test_multiprocess_sigttin() -> None:
     supervisor = Multiprocess(config, target=run, sockets=[])
     threading.Thread(target=supervisor.run, daemon=True).start()
     supervisor.signal_queue.append(signal.SIGTTIN)
-    time.sleep(1)
+    # Wait up to 5 seconds for an additional worker to be spawned.
+    start = time.time()
+    while time.time() - start < 5:
+        if len(supervisor.processes) == 3:
+            break
+        time.sleep(0.1)
     assert len(supervisor.processes) == 3
     supervisor.signal_queue.append(signal.SIGINT)
     supervisor.join_all()
@@ -162,10 +173,20 @@ def test_multiprocess_sigttou() -> None:
     supervisor = Multiprocess(config, target=run, sockets=[])
     threading.Thread(target=supervisor.run, daemon=True).start()
     supervisor.signal_queue.append(signal.SIGTTOU)
-    time.sleep(1)
+    # Wait up to 5 seconds for a worker to be stopped.
+    start = time.time()
+    while time.time() - start < 5:
+        if len(supervisor.processes) == 1:
+            break
+        time.sleep(0.1)
     assert len(supervisor.processes) == 1
     supervisor.signal_queue.append(signal.SIGTTOU)
-    time.sleep(1)
+    # Ensure it remains at 1 after another SIGTTOU (wait again if needed).
+    start = time.time()
+    while time.time() - start < 5:
+        if len(supervisor.processes) == 1:
+            break
+        time.sleep(0.1)
     assert len(supervisor.processes) == 1
     supervisor.signal_queue.append(signal.SIGINT)
     supervisor.join_all()

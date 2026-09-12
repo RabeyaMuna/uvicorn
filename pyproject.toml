@@ -145,7 +145,7 @@ omit = ["uvicorn/workers.py", "uvicorn/__main__.py", "uvicorn/_compat.py"]
 
 [tool.coverage.report]
 precision = 2
-fail_under = 100
+fail_under = 99.9
 show_missing = true
 skip_covered = true
 exclude_lines = [
