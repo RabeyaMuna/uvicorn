@@ -186,10 +186,18 @@ class Multiprocess:
             if sig_handler is not None:
                 sig_handler()
             else:  # pragma: no cover
-                logger.debug(f"Received signal {sig_name}, but no handler is defined for it.")
+                try:
+                    logger.debug(f"Received signal {sig_name}, but no handler is defined for it.")
+                except Exception:
+                    # Avoid raising during signal handling (e.g., I/O on closed file)
+                    pass
 
     def handle_int(self) -> None:
-        logger.info("Received SIGINT, exiting.")
+        try:
+            logger.info("Received SIGINT, exiting.")
+        except Exception:
+            # Avoid raising during signal handling (e.g., I/O on closed file)
+            pass
         self.should_exit.set()
 
     def handle_term(self) -> None:
