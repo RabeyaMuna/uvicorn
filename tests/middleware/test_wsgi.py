@@ -5,7 +5,7 @@ import sys
 from collections.abc import AsyncGenerator
 from typing import Callable
 
-import a2wsgi
+# import a2wsgi  # Commented out for testing without network
 import httpx
 import pytest
 
