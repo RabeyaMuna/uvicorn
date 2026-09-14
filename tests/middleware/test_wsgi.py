@@ -5,9 +5,13 @@ import sys
 from collections.abc import AsyncGenerator
 from typing import Callable
 
-import a2wsgi
 import httpx
 import pytest
+
+try:
+    import a2wsgi
+except ModuleNotFoundError:
+    a2wsgi = None  # type: ignore
 
 from uvicorn._types import Environ, HTTPRequestEvent, HTTPScope, StartResponse
 from uvicorn.middleware import wsgi
@@ -53,7 +57,7 @@ def return_exc_info(environ: Environ, start_response: StartResponse) -> list[byt
         return [output]
 
 
-@pytest.fixture(params=[wsgi._WSGIMiddleware, a2wsgi.WSGIMiddleware])
+@pytest.fixture(params=[wsgi._WSGIMiddleware, a2wsgi.WSGIMiddleware] if a2wsgi else [wsgi._WSGIMiddleware])
 def wsgi_middleware(request: pytest.FixtureRequest) -> Callable:
     return request.param
 
@@ -137,3 +141,31 @@ def test_build_environ_encoding() -> None:
     assert environ["SCRIPT_NAME"] == "/文".encode().decode("latin-1")
     assert environ["PATH_INFO"] == b"/all".decode("latin-1")
     assert environ["HTTP_KEY"] == "value1,value2"
+
+
+def delayed_hello_world(environ: Environ, start_response: StartResponse) -> list[bytes]:
+    import time
+    time.sleep(0.1)  # Delay to allow sender to hit empty queue case
+    status = "200 OK"
+    output = b"Hello World!\n"
+    headers = [
+        ("Content-Type", "text/plain; charset=utf-8"),
+        ("Content-Length", str(len(output))),
+    ]
+    start_response(status, headers, None)
+    return [output]
+
+
+@pytest.mark.anyio
+async def test_wsgi_sender_empty_queue() -> None:
+    # Test the native _WSGIMiddleware specifically to cover the sender's
+    # empty queue case (lines 154-155 in wsgi.py)
+    # The sender should wait on the event when the queue is initially empty
+    import warnings
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        transport = httpx.ASGITransport(wsgi._WSGIMiddleware(delayed_hello_world))
+    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        response = await client.get("/")
+    assert response.status_code == 200
+    assert response.text == "Hello World!\n"
