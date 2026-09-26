@@ -124,3 +124,34 @@ def test_deprecated_server_state_from_main() -> None:
         main = importlib.import_module("uvicorn.main")
         server_state_cls = getattr(main, "ServerState")
     assert server_state_cls is uvicorn.server.ServerState
+
+
+async def test_wsgi_middleware_sender_empty_queue() -> None:
+    """Test that the WSGI middleware sender handles an empty queue.
+
+    This test ensures coverage of lines 154-155 in uvicorn/middleware/wsgi.py,
+    which are the else branch of the sender method (when the send queue is empty).
+    """
+    import time
+
+    from uvicorn._types import Environ, StartResponse
+    from uvicorn.middleware.wsgi import _WSGIMiddleware
+
+    def slow_app(environ: Environ, start_response: StartResponse) -> list[bytes]:
+        """A WSGI app that delays before responding, ensuring the sender
+        task runs with an empty queue."""
+        time.sleep(0.01)  # Small delay to let the sender task run first
+        status = "200 OK"
+        output = b"Hello World!\n"
+        headers = [
+            ("Content-Type", "text/plain; charset=utf-8"),
+            ("Content-Length", str(len(output))),
+        ]
+        start_response(status, headers, None)
+        return [output]
+
+    transport = httpx.ASGITransport(_WSGIMiddleware(slow_app))
+    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        response = await client.get("/")
+    assert response.status_code == 200
+    assert response.text == "Hello World!\n"
