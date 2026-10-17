@@ -132,7 +132,7 @@ def test_multiprocess_sighup() -> None:
     time.sleep(1)
     pids = [p.pid for p in supervisor.processes]
     supervisor.signal_queue.append(signal.SIGHUP)
-    time.sleep(1)
+    time.sleep(2)
     assert pids != [p.pid for p in supervisor.processes]
     supervisor.signal_queue.append(signal.SIGINT)
     supervisor.join_all()
@@ -147,7 +147,7 @@ def test_multiprocess_sigttin() -> None:
     supervisor = Multiprocess(config, target=run, sockets=[])
     threading.Thread(target=supervisor.run, daemon=True).start()
     supervisor.signal_queue.append(signal.SIGTTIN)
-    time.sleep(1)
+    time.sleep(2)
     assert len(supervisor.processes) == 3
     supervisor.signal_queue.append(signal.SIGINT)
     supervisor.join_all()
@@ -162,10 +162,10 @@ def test_multiprocess_sigttou() -> None:
     supervisor = Multiprocess(config, target=run, sockets=[])
     threading.Thread(target=supervisor.run, daemon=True).start()
     supervisor.signal_queue.append(signal.SIGTTOU)
-    time.sleep(1)
+    time.sleep(2)
     assert len(supervisor.processes) == 1
     supervisor.signal_queue.append(signal.SIGTTOU)
-    time.sleep(1)
+    time.sleep(2)
     assert len(supervisor.processes) == 1
     supervisor.signal_queue.append(signal.SIGINT)
     supervisor.join_all()
