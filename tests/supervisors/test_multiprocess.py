@@ -133,7 +133,10 @@ def test_multiprocess_sighup() -> None:
     pids = [p.pid for p in supervisor.processes]
     supervisor.signal_queue.append(signal.SIGHUP)
     time.sleep(1)
-    assert pids != [p.pid for p in supervisor.processes]
+    new_pids = [p.pid for p in supervisor.processes]
+    assert (
+        pids != new_pids
+    ), f"Worker processes were not restarted after SIGHUP. Original PIDs: {pids}, New PIDs: {new_pids}"
     supervisor.signal_queue.append(signal.SIGINT)
     supervisor.join_all()
 
