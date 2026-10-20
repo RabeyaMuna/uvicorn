@@ -3,5 +3,5 @@
 set -x
 
 uv build
-uv run twine check dist/*
+uv run twine check --strict dist/*
 uv run mkdocs build
