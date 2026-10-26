@@ -132,7 +132,14 @@ def test_multiprocess_sighup() -> None:
     time.sleep(1)
     pids = [p.pid for p in supervisor.processes]
     supervisor.signal_queue.append(signal.SIGHUP)
-    time.sleep(1)
+    # wait for workers to restart; poll for up to 5 seconds
+    start = time.time()
+    timeout = 5
+    while time.time() - start < timeout:
+        current_pids = [p.pid for p in supervisor.processes]
+        if current_pids != pids:
+            break
+        time.sleep(0.1)
     assert pids != [p.pid for p in supervisor.processes]
     supervisor.signal_queue.append(signal.SIGINT)
     supervisor.join_all()
