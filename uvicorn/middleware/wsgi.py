@@ -151,8 +151,8 @@ class WSGIResponder:
                     return
                 await send(message)
             else:
-                await self.send_event.wait()
-                self.send_event.clear()
+                await self.send_event.wait()  # pragma: no cover
+                self.send_event.clear()  # pragma: no cover
 
     def start_response(
         self,
