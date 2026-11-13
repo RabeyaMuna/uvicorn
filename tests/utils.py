@@ -16,8 +16,12 @@ from uvicorn import Config, Server
 async def run_server(config: Config, sockets: list[socket] | None = None) -> AsyncIterator[Server]:
     server = Server(config=config)
     task = asyncio.create_task(server.serve(sockets=sockets))
-    await asyncio.sleep(0.1)
     try:
+        # Wait for the server to actually start listening
+        for _ in range(50):
+            if server.started:
+                break
+            await asyncio.sleep(0.1)
         yield server
     finally:
         await server.shutdown()

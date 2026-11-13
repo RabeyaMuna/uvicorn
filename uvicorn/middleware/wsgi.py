@@ -145,14 +145,13 @@ class WSGIResponder:
 
     async def sender(self, send: ASGISendCallable) -> None:
         while True:
-            if self.send_queue:
+            await self.send_event.wait()
+            self.send_event.clear()
+            while self.send_queue:
                 message = self.send_queue.popleft()
                 if message is None:
                     return
                 await send(message)
-            else:
-                await self.send_event.wait()
-                self.send_event.clear()
 
     def start_response(
         self,
